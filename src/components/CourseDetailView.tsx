@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Course, TrackedFile, Chapter, Playlist, FolderProgress } from "../types";
+import { VideoPlayer } from "./VideoPlayer";
 
 interface CourseDetailViewProps {
   course: Course | null;
@@ -177,7 +178,7 @@ export default function CourseDetailView({
   const renderHighlightedCode = (code: string) => {
     const lines = code.split("\n");
     return (
-      <div className="bg-surface-base border border-border-stroke p-5 rounded-lg font-mono text-xs overflow-x-auto text-left leading-relaxed">
+      <div className="bg-surface-base border border-border-stroke p-5 rounded font-mono text-xs overflow-x-auto text-left leading-relaxed">
         <table className="w-full font-mono">
           <tbody>
             {lines.map((line, idx) => {
@@ -263,7 +264,7 @@ export default function CourseDetailView({
         <div id="syllabus-left-sidebar" className="lg:col-span-4 space-y-4">
           
           {/* Summary Box */}
-          <div className="bg-surface-container border border-border-stroke p-5 rounded-lg select-none">
+          <div className="bg-surface-container border border-border-stroke p-5 rounded select-none">
             <h4 className="text-white font-bold text-base mb-1 truncate">{course.name}</h4>
             <p className="text-[11px] font-mono text-text-secondary uppercase tracking-wider">Indexed File Course</p>
             
@@ -282,7 +283,7 @@ export default function CourseDetailView({
           </div>
 
           {/* Collapsible Chapters List */}
-          <div className="bg-surface-container border border-border-stroke p-4 rounded-lg space-y-3">
+          <div className="bg-surface-container border border-border-stroke p-4 rounded space-y-3">
             <span className="block font-mono text-[10px] uppercase text-text-secondary tracking-widest px-1">
               Chapter Directories
             </span>
@@ -362,7 +363,7 @@ export default function CourseDetailView({
         {/* RIGHT COLUMN: Interactive Main Player area (lg:col-span-8) */}
         <div id="media-viewport-panel" className="lg:col-span-8">
           {activeFile ? (
-            <div className="bg-surface-container border border-border-stroke p-6 sm:p-8 rounded-lg space-y-6">
+            <div className="bg-surface-container border border-border-stroke p-6 sm:p-8 rounded space-y-6">
               
               {/* Active content metadata */}
               <div id="active-file-titlebar" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border-stroke/60 pb-5">
@@ -393,7 +394,7 @@ export default function CourseDetailView({
               {/* Dynamic Player Framework Rendering */}
               <div id="player-view-portal" className="min-h-[300px] relative">
                 {loadingFile ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-base/40 rounded-lg select-none">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-base/40 rounded select-none">
                     <span className="w-8 h-8 rounded-full border-2 border-brand-neon border-t-transparent animate-spin mb-3"></span>
                     <p className="font-mono text-xs text-text-secondary">Scanning & decrypting local file indices...</p>
                   </div>
@@ -409,15 +410,15 @@ export default function CourseDetailView({
                 ) : (
                   <div className="animate-fade-in">
                     {/* VIDEO CONTAINER */}
-                    {activeFile.type === 'video' && fileBlobUrl && (
-                      <div className="rounded-lg overflow-hidden border border-border-stroke bg-black relative shadow-lg">
-                        <video
-                          key={activeFile.id}
-                          ref={videoRef}
-                          src={fileBlobUrl}
-                          controls
-                          onTimeUpdate={handleVideoTimeUpdate}
-                          className="w-full h-auto max-h-[500px]"
+                    {activeFile.type === 'video' && (
+                      <div className="rounded overflow-hidden border border-border-stroke bg-black relative shadow-lg">
+                        <VideoPlayer
+                          file={activeFile}
+                          onAutoComplete={() => {
+                            if (!hasManuallyUnmarkedRef.current) {
+                              onUpdateProgress(course.id, activeFile.path, true);
+                            }
+                          }}
                         />
                         <div className="p-3 bg-surface-highest/40 font-mono text-[10px] text-text-secondary text-center select-none border-t border-border-stroke/30">
                           Video auto-marked complete at <span className="text-brand-neon font-bold">90%</span> playback progression.
@@ -433,11 +434,11 @@ export default function CourseDetailView({
                           <embed
                             src={fileBlobUrl}
                             type="application/pdf"
-                            className="w-full h-[650px] rounded-lg border border-border-stroke bg-surface-highest"
+                            className="w-full h-[650px] rounded border border-border-stroke bg-surface-highest"
                           />
                         ) : (
                           // Fallback mockup PDF panel for simulator
-                          <div className="border border-border-stroke bg-surface-highest/20 p-8 text-center rounded-lg space-y-6">
+                          <div className="border border-border-stroke bg-surface-highest/20 p-8 text-center rounded space-y-6">
                             <div className="max-w-md mx-auto space-y-3">
                               <FileText className="w-12 h-12 text-rose-400 mx-auto animate-bounce" />
                               <h4 className="text-white font-bold text-base">Standard Academic Syllabus PDF</h4>
@@ -458,7 +459,7 @@ export default function CourseDetailView({
 
                     {/* TEXT & MD CONTAINER */}
                     {activeFile.type === 'text' && (
-                      <div className="p-6 bg-surface-highest/10 border border-border-stroke rounded-lg leading-relaxed text-sm text-text-secondary">
+                      <div className="p-6 bg-surface-highest/10 border border-border-stroke rounded leading-relaxed text-sm text-text-secondary">
                         <div className="prose prose-invert max-w-none text-slate-100 markdown-body">
                           <ReactMarkdown>{fileText}</ReactMarkdown>
                         </div>
@@ -468,7 +469,7 @@ export default function CourseDetailView({
                     {/* LIVE HTML CONTAINER */}
                     {activeFile.type === 'html' && fileText && (
                       <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-surface-highest/60 border border-border-stroke p-3 rounded-lg select-none">
+                        <div className="flex justify-between items-center bg-surface-highest/60 border border-border-stroke p-3 rounded select-none">
                           <span className="font-mono text-xs text-brand-neon flex items-center gap-1.5 font-bold">
                             <Globe className="w-4 h-4" /> Live rendered HTML Sandbox
                           </span>
@@ -479,7 +480,7 @@ export default function CourseDetailView({
                           title="HTML Course Player"
                           sandbox="allow-scripts"
                           srcDoc={fileText}
-                          className="w-full h-[450px] rounded-lg bg-white border border-border-stroke shadow-lg"
+                          className="w-full h-[450px] rounded bg-white border border-border-stroke shadow-lg"
                         />
                       </div>
                     )}
@@ -487,7 +488,7 @@ export default function CourseDetailView({
                     {/* CODE HIGHLIGHT CONTAINER */}
                     {activeFile.type === 'code' && fileText && (
                       <div className="space-y-3">
-                        <div className="flex justify-between items-center bg-surface-highest/45 border border-border-stroke p-2.5 px-4 rounded-lg select-none">
+                        <div className="flex justify-between items-center bg-surface-highest/45 border border-border-stroke p-2.5 px-4 rounded select-none">
                           <span className="font-mono text-xs text-white">Source code parsing viewport</span>
                           <span className="font-mono text-[10px] text-text-secondary uppercase">{activeFile.extension} mode</span>
                         </div>
@@ -499,7 +500,7 @@ export default function CourseDetailView({
               </div>
 
               {/* Course Progression Control button */}
-              <div id="course-completion-card" className="flex items-center justify-between p-4 bg-brand-neon/5 border border-brand-neon/20 rounded-lg select-none">
+              <div id="course-completion-card" className="flex items-center justify-between p-4 bg-brand-neon/5 border border-brand-neon/20 rounded select-none">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-brand-neon/10 text-brand-neon rounded">
                     <Award className="w-5 h-5" />
@@ -520,7 +521,7 @@ export default function CourseDetailView({
 
             </div>
           ) : (
-            <div className="p-12 text-center font-mono text-xs text-text-secondary border border-border-stroke bg-surface-container select-none rounded-lg">
+            <div className="p-12 text-center font-mono text-xs text-text-secondary border border-border-stroke bg-surface-container select-none rounded">
               No files are active in the reader viewport. Expand a chapter directory folder on the left sidebar to select a study path component.
             </div>
           )}

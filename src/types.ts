@@ -52,17 +52,9 @@ export interface RecentDirectory {
   fileCount: number;
 }
 
-export interface DownloadedAsset {
-  id: string;
-  title: string;
-  size: string;
-  encryptionMethod: string;
-  decryptedInRam: boolean;
-}
-
 export interface AnalyticsRecord {
   date: string;
-  xpGained: number;
+  timeSpentSeconds: number;
   lessonsCompleted: number;
-  proofsGenerated: number;
+  filesIndexed: number;
 }
