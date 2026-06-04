@@ -72,9 +72,9 @@ export function VideoPlayer({ file, onAutoComplete }: VideoPlayerProps) {
 
   return (
     <Player.Provider>
-      <div className="h-full bg-black relative overflow-hidden">
+      <div className="h-full bg-black relative">
         <VideoSkin className="h-full w-full">
-          <Video src={src} playsInline className="h-full w-full max-h-[500px]" />
+          <Video src={src} playsInline className="h-full w-full" />
         </VideoSkin>
         <PlayerInner onAutoComplete={onAutoComplete} />
       </div>

@@ -411,7 +411,7 @@ export default function CourseDetailView({
                   <div className="animate-fade-in">
                     {/* VIDEO CONTAINER */}
                     {activeFile.type === 'video' && (
-                      <div className="rounded overflow-hidden border border-border-stroke bg-black relative shadow-lg">
+                      <div className="rounded border border-border-stroke bg-black relative shadow-lg">
                         <VideoPlayer
                           file={activeFile}
                           onAutoComplete={() => {
