@@ -1,58 +1,122 @@
 import React, { useState, useEffect } from "react";
-import { Shield, Settings, Key, Cpu, RefreshCw, X, Check, Shuffle, Award, PlayCircle, BookOpen, Terminal, BarChart3, Download } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
-import LibraryView from "./components/LibraryView";
+import HomeView from "./components/HomeView";
+import LibraryListView from "./components/LibraryListView";
 import CourseDetailView from "./components/CourseDetailView";
 import AnalyticsView from "./components/AnalyticsView";
-import DownloadsView from "./components/DownloadsView";
 import DocumentationView from "./components/DocumentationView";
 import { Playlist, Course, FolderProgress } from "./types";
 import { saveProgressToFolder } from "./lib/scanner";
 
 export default function App() {
-  const [currentView, setView] = useState<'library' | 'active-course' | 'downloads' | 'analytics' | 'documentation'>('library');
+  const [currentView, setView] = useState<'home' | 'library' | 'analytics' | 'documentation'>('home');
   
   // Local-first loaded directory states
   const [loadedPlaylist, setLoadedPlaylist] = useState<Playlist | null>(null);
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
 
-  // Global gamified metadata stats (locally persisted in localStorage)
-  const [userXP, setUserXP] = useState(100);
-  const [streakDays, setStreakDays] = useState(1);
+  // Global study metrics (locally persisted in localStorage)
+  const [timeSpentSeconds, setTimeSpentSeconds] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("chaptr_time_spent_seconds");
+      return saved ? parseInt(saved, 10) : 0;
+    }
+    return 0;
+  });
+  const [streakDays, setStreakDays] = useState(0);
   const [nodeSynced, setNodeSynced] = useState(true);
 
-  // Security & encryption configurations drawer state
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [cryptoAlgorithm, setCryptoAlgorithm] = useState("AES-256-GCM");
-  const [entropyPool, setEntropyPool] = useState("0x4A6B");
-  const [mnemonicPhrase, setMnemonicPhrase] = useState("");
+  // Sidebar collapse state (persisted)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("chaptr_sidebar_collapsed");
+      return saved === "true";
+    }
+    return false;
+  });
 
-  const USER_EMAIL = "sandbox-user@chaptr.local";
+  useEffect(() => {
+    localStorage.setItem("chaptr_sidebar_collapsed", String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  // Handle consecutive days study streak activity
+  const handleStudyActivity = () => {
+    const todayStr = new Date().toLocaleDateString("sv-SE");
+    const lastStudyDate = localStorage.getItem("chaptr_last_study_date");
+    const savedStreak = localStorage.getItem("chaptr_streak");
+    let currentStreak = savedStreak ? parseInt(savedStreak, 10) : 0;
+
+    if (!lastStudyDate) {
+      currentStreak = 1;
+      localStorage.setItem("chaptr_streak", "1");
+      localStorage.setItem("chaptr_last_study_date", todayStr);
+      setStreakDays(1);
+    } else if (lastStudyDate !== todayStr) {
+      const todayDate = new Date(todayStr);
+      const lastDate = new Date(lastStudyDate);
+      const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        currentStreak += 1;
+      } else {
+        currentStreak = 1;
+      }
+      localStorage.setItem("chaptr_streak", String(currentStreak));
+      localStorage.setItem("chaptr_last_study_date", todayStr);
+      setStreakDays(currentStreak);
+    }
+  };
 
   useEffect(() => {
     // Load local metrics from localStorage if stored
-    const savedXP = localStorage.getItem("chaptr_user_xp");
     const savedStreak = localStorage.getItem("chaptr_streak");
+    const lastStudyDate = localStorage.getItem("chaptr_last_study_date");
+    const todayStr = new Date().toLocaleDateString("sv-SE");
 
-    if (savedXP) setUserXP(parseInt(savedXP, 10));
-    if (savedStreak) setStreakDays(parseInt(savedStreak, 10));
-
-    generateNewMnemonic();
+    if (savedStreak) {
+      const streakVal = parseInt(savedStreak, 10);
+      if (lastStudyDate && lastStudyDate !== todayStr) {
+        const todayDate = new Date(todayStr);
+        const lastDate = new Date(lastStudyDate);
+        const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays > 1) {
+          setStreakDays(0);
+          localStorage.setItem("chaptr_streak", "0");
+        } else {
+          setStreakDays(streakVal);
+        }
+      } else {
+        setStreakDays(streakVal);
+      }
+    } else {
+      setStreakDays(0);
+    }
   }, []);
 
-  const generateNewMnemonic = () => {
-    const seedWords = [
-      "directory", "client", "sandbox", "token", "encryption", "entropy",
-      "cipher", "sha256", "private", "access", "local", "indexeddb",
-      "course", "playlist", "chapter", "tracker", "progress", "integrity"
-    ];
-    const sequence = Array.from({ length: 12 }, () => seedWords[Math.floor(Math.random() * seedWords.length)]);
-    setMnemonicPhrase(sequence.join(" "));
-    setEntropyPool("0x" + Math.floor(Math.random() * 65536).toString(16).toUpperCase().padStart(4, "0"));
-  };
+  // Study timer to track time spent on the page
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.hasFocus()) {
+        setTimeSpentSeconds(prev => {
+          const next = prev + 1;
+          localStorage.setItem("chaptr_time_spent_seconds", String(next));
+          
+          // Mark active study session to maintain streak if active at least 10 seconds
+          if (next >= 10 && next % 10 === 0) {
+            handleStudyActivity();
+          }
+          return next;
+        });
+      }
+    }, 1000);
 
-  const handleSetView = (view: 'library' | 'active-course' | 'downloads' | 'analytics' | 'documentation') => {
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSetView = (view: 'home' | 'library' | 'analytics' | 'documentation') => {
     setView(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -61,7 +125,7 @@ export default function App() {
   const handleSelectCourse = (course: Course, parentPlaylist: Playlist | null) => {
     setActiveCourse(course);
     setLoadedPlaylist(parentPlaylist);
-    handleSetView('active-course');
+    handleSetView('library');
   };
 
   // Mount/select a multi-course playlist from Library indexers
@@ -70,7 +134,7 @@ export default function App() {
     if (playlist.courses.length > 0) {
       setActiveCourse(playlist.courses[0]);
     }
-    handleSetView('active-course');
+    handleSetView('library');
   };
 
   // Manage course completions and track progress.json changes
@@ -94,10 +158,9 @@ export default function App() {
           } else {
             if (completed) {
               updatedProgress[filePath] = true;
-              xpGain = 120; // 120 XP Reward per lesson completed
+              handleStudyActivity();
             } else {
               delete updatedProgress[filePath];
-              xpGain = -120;
             }
           }
 
@@ -149,10 +212,9 @@ export default function App() {
         } else {
           if (completed) {
             updatedProgress[filePath] = true;
-            xpGain = 120;
+            handleStudyActivity();
           } else {
             delete updatedProgress[filePath];
-            xpGain = -120;
           }
         }
 
@@ -182,20 +244,7 @@ export default function App() {
       }
     }
 
-    // 3. Increment XP metrics
-    if (xpGain !== 0) {
-      const nextXP = Math.max(0, userXP + xpGain);
-      setUserXP(nextXP);
-      localStorage.setItem("chaptr_user_xp", String(nextXP));
-
-      if (xpGain > 0) {
-        const nextStreak = streakDays + 1;
-        setStreakDays(nextStreak);
-        localStorage.setItem("chaptr_streak", String(nextStreak));
-      }
-    }
-
-    // 4. Save progress.json specifically back to user file system using handle if supported!
+    // 3. Save progress.json specifically back to user file system using handle if supported!
     if (targetCourse && targetCourse.handle) {
       setNodeSynced(false);
       const success = await saveProgressToFolder(targetCourse.handle, targetCourse.progress);
@@ -219,50 +268,62 @@ export default function App() {
         currentView={currentView}
         setView={handleSetView}
         nodeSynced={nodeSynced}
+        isCollapsed={isSidebarCollapsed}
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
 
       {/* Main app header */}
       <Header
         currentView={currentView}
         setView={handleSetView}
-        userEmail={USER_EMAIL}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        isSidebarCollapsed={isSidebarCollapsed}
       />
 
       {/* Primary Workspace Stage */}
-      <main id="main-content-canvas" className="md:ml-64 pt-16 min-h-screen relative flex flex-col justify-between">
+      <main
+        id="main-content-canvas"
+        className={`pt-16 min-h-screen relative flex flex-col justify-between transition-all duration-300 ease-in-out ${
+          isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
+        }`}
+      >
         <div className="absolute inset-0 z-0 opacity-15 pointer-events-none">
           <div className="grid-overlay absolute inset-0"></div>
         </div>
 
         <div className="relative z-10 flex-1">
-          {currentView === 'library' && (
-            <LibraryView
+          {currentView === 'home' && (
+            <HomeView
               onSelectCourse={handleSelectCourse}
               onSelectPlaylist={handleSelectPlaylist}
             />
           )}
 
-          {currentView === 'active-course' && (
-            <CourseDetailView
-              course={activeCourse}
-              parentPlaylist={loadedPlaylist}
-              onBack={() => handleSetView('library')}
-              onUpdateProgress={handleUpdateProgress}
-              onSelectCourse={(course) => handleSelectCourse(course, loadedPlaylist)}
-            />
+          {currentView === 'library' && (
+            activeCourse ? (
+              <CourseDetailView
+                course={activeCourse}
+                parentPlaylist={loadedPlaylist}
+                onBack={() => {
+                  setActiveCourse(null);
+                  setLoadedPlaylist(null);
+                }}
+                onUpdateProgress={handleUpdateProgress}
+                onSelectCourse={(course) => handleSelectCourse(course, loadedPlaylist)}
+              />
+            ) : (
+              <LibraryListView
+                onSelectCourse={handleSelectCourse}
+                onSelectPlaylist={handleSelectPlaylist}
+              />
+            )
           )}
 
           {currentView === 'analytics' && (
             <AnalyticsView
               completedCount={aggregatedFilesCompleted}
-              userXP={userXP}
+              timeSpentSeconds={timeSpentSeconds}
               streakDays={streakDays}
             />
-          )}
-
-          {currentView === 'downloads' && (
-            <DownloadsView />
           )}
 
           {currentView === 'documentation' && (
@@ -323,84 +384,10 @@ export default function App() {
           </div>
 
           <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-border-stroke/50 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-text-secondary/40 font-mono">
-            <p>© 2026 Chaptr Learning Client. Fully decentralized static node.</p>
+            <p>© 2026 Chaptr Learning Client. Local-first static web player.</p>
           </div>
         </footer>
       </main>
-
-      {/* Security configurations popup drawer */}
-      {isSettingsOpen && (
-        <div id="settings-overlay" className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div id="settings-dialogue" className="bg-surface-container border border-border-stroke w-full max-w-lg p-6 sm:p-8 rounded-none relative">
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className="absolute top-4 right-4 text-text-secondary hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-6 select-none">
-              <Settings className="w-6 h-6 text-brand-neon" />
-              <h3 className="text-xl font-bold text-white tracking-tight">System details</h3>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block font-mono text-[10px] uppercase text-text-secondary mb-2 text-left">
-                  Workspace sandbox cryptography
-                </label>
-                <div id="alg-selection-row" className="grid grid-cols-2 gap-2">
-                  {["AES-256-GCM", "ChaCha20-Poly1305"].map((alg) => (
-                    <button
-                      key={alg}
-                      onClick={() => setCryptoAlgorithm(alg)}
-                      className={`py-2 px-3 justify-center border font-mono text-xs rounded transition-colors cursor-pointer ${
-                        cryptoAlgorithm === alg
-                          ? "bg-brand-neon/10 border-brand-neon text-brand-neon font-bold"
-                          : "border-border-stroke bg-surface-base/50 text-text-secondary hover:border-white/20 hover:text-white"
-                      }`}
-                    >
-                      {alg}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div id="settings-mnemonic-box" className="text-left">
-                <label className="block font-mono text-[10px] uppercase text-text-secondary mb-2">
-                  Client Seed (12 Words Mnemonic)
-                </label>
-                <div className="p-3 bg-surface-base border border-border-stroke rounded text-xs text-white/90 font-mono leading-relaxed select-all">
-                  {mnemonicPhrase}
-                </div>
-                <p className="text-[10px] text-text-secondary/60 mt-1.5 font-mono">
-                  Used client-side to generate internal IDs and authenticate cache signatures.
-                </p>
-              </div>
-
-              <div className="text-left">
-                <label className="block font-mono text-[10px] uppercase text-text-secondary mb-1">
-                  System entropy signature
-                </label>
-                <div className="flex items-center gap-3 bg-surface-base p-2 px-3 border border-border-stroke rounded select-none">
-                  <Cpu className="w-4 h-4 text-brand-neon" />
-                  <span className="font-mono text-xs text-white/95 font-bold tracking-widest">{entropyPool}</span>
-                  <span className="font-mono text-[9px] text-green-500 uppercase font-semibold ml-auto flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> Client Parity Secured
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className="mt-6 w-full py-2.5 bg-surface-base hover:bg-surface-highest text-white font-bold font-mono text-xs uppercase border border-border-stroke rounded cursor-pointer transition-colors"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -46,3 +46,17 @@ body {
   100% { top: 100%; }
 }
 
+/* Override videojs skin border-radius to match app's 4px design language */
+.media-default-skin,
+.media-default-skin--video {
+  border-radius: 0 !important;
+}
+
+.media-default-skin video {
+  border-radius: 0 !important;
+}
+
+.media-default-skin .media-controls {
+  border-radius: 0.25rem !important;
+}
+

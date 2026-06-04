@@ -1,18 +1,22 @@
 import React, { useState } from "react";
-import { Settings, HelpCircle, User, Menu, X, BookOpen, PlayCircle, Download, BarChart3, Terminal } from "lucide-react";
+import { Home, HelpCircle, Menu, X, BookOpen, BarChart3, Terminal } from "lucide-react";
 
 interface HeaderProps {
-  currentView: 'library' | 'active-course' | 'downloads' | 'analytics' | 'documentation';
-  setView: (view: 'library' | 'active-course' | 'downloads' | 'analytics' | 'documentation') => void;
-  userEmail?: string;
-  onOpenSettings: () => void;
+  currentView: 'home' | 'library' | 'analytics' | 'documentation';
+  setView: (view: 'home' | 'library' | 'analytics' | 'documentation') => void;
+  isSidebarCollapsed: boolean;
 }
 
-export default function Header({ currentView, setView, userEmail, onOpenSettings }: HeaderProps) {
+export default function Header({ currentView, setView, isSidebarCollapsed }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header id="header-bar" className="fixed top-0 w-full z-40 border-b border-border-stroke bg-surface-base/80 backdrop-blur-md flex justify-between items-center px-6 md:px-12 h-16">
+    <header
+      id="header-bar"
+      className={`fixed top-0 right-0 z-40 border-b border-border-stroke bg-surface-base/80 backdrop-blur-md flex justify-between items-center px-6 md:px-12 h-16 transition-all duration-300 ease-in-out ${
+        isSidebarCollapsed ? "left-0 md:left-16" : "left-0 md:left-64"
+      }`}
+    >
       {/* Mobile Menu Trigger & Logo */}
       <div id="mobile-branding-row" className="flex items-center gap-4">
         <button
@@ -25,7 +29,7 @@ export default function Header({ currentView, setView, userEmail, onOpenSettings
         </button>
         <span
           id="branding-title"
-          onClick={() => setView('library')}
+          onClick={() => setView('home')}
           className="font-mono text-xl font-extrabold text-brand-neon tracking-tighter cursor-pointer"
         >
           Chaptr
@@ -35,22 +39,6 @@ export default function Header({ currentView, setView, userEmail, onOpenSettings
 
       {/* Right Controls */}
       <div id="profile-controls-row" className="flex items-center gap-4 text-text-secondary">
-        {/* User email badge */}
-        {userEmail && (
-          <span className="hidden lg:inline-block font-mono text-xs bg-surface-highest text-white/80 py-1 px-3 border border-border-stroke rounded shadow-sm">
-            {userEmail}
-          </span>
-        )}
-
-        <button
-          id="btn-nav-settings"
-          onClick={onOpenSettings}
-          className="hover:text-brand-neon transition-colors duration-150 p-1 rounded-full cursor-pointer active:scale-95"
-          title="Security & Node Settings"
-        >
-          <Settings className="w-5 h-5" />
-        </button>
-        
         <button
           id="btn-nav-help"
           onClick={() => setView('documentation')}
@@ -59,10 +47,6 @@ export default function Header({ currentView, setView, userEmail, onOpenSettings
         >
           <HelpCircle className="w-5 h-5" />
         </button>
-
-        <div id="user-avatar-badge" className="flex items-center gap-1.5 cursor-pointer hover:text-brand-neon transition-colors">
-          <User className="w-5 h-5" />
-        </div>
       </div>
 
       {/* Mobile Drawer */}
@@ -71,33 +55,23 @@ export default function Header({ currentView, setView, userEmail, onOpenSettings
           <nav className="flex-1 space-y-4">
             <button
               onClick={() => {
+                setView('home');
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-4 text-left font-mono py-2 text-lg text-white font-medium"
+            >
+              <Home className="w-5 h-5 text-brand-neon" />
+              <span>Home</span>
+            </button>
+            <button
+              onClick={() => {
                 setView('library');
                 setMobileMenuOpen(false);
               }}
               className="w-full flex items-center gap-4 text-left font-mono py-2 text-lg text-white font-medium"
             >
               <BookOpen className="w-5 h-5 text-brand-neon" />
-              <span>Library Home</span>
-            </button>
-            <button
-              onClick={() => {
-                setView('active-course');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-4 text-left font-mono py-2 text-lg text-white font-medium"
-            >
-              <PlayCircle className="w-5 h-5 text-brand-neon" />
-              <span>Active Course</span>
-            </button>
-            <button
-              onClick={() => {
-                setView('downloads');
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-4 text-left font-mono py-2 text-lg text-white font-medium"
-            >
-              <Download className="w-5 h-5 text-brand-neon" />
-              <span>Downloads</span>
+              <span>Library</span>
             </button>
             <button
               onClick={() => {
@@ -122,7 +96,7 @@ export default function Header({ currentView, setView, userEmail, onOpenSettings
           </nav>
           
           <div className="border-t border-border-stroke pt-6 mt-auto">
-            <p className="font-mono text-xs text-text-secondary">Node synchronized with local browser sandbox.</p>
+            <p className="font-mono text-xs text-text-secondary">Running entirely in local browser workspace.</p>
           </div>
         </div>
       )}
