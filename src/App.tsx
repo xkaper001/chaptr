@@ -8,6 +8,7 @@ import AnalyticsView from "./components/AnalyticsView";
 import DocumentationView from "./components/DocumentationView";
 import { Playlist, Course, FolderProgress } from "./types";
 import { saveProgressToFolder } from "./lib/scanner";
+import { analytics } from "./lib/analytics";
 
 export default function App() {
   const [currentView, setView] = useState<'home' | 'library' | 'analytics' | 'documentation'>('home');
@@ -96,28 +97,40 @@ export default function App() {
     }
   }, []);
 
-  // Study timer to track time spent on the page
+  // Study timer — only counts when actively in a course (studying)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (document.hasFocus()) {
+      const isStudying = currentView === 'library' && activeCourse !== null;
+      if (isStudying && document.hasFocus()) {
         setTimeSpentSeconds(prev => {
           const next = prev + 1;
           localStorage.setItem("chaptr_time_spent_seconds", String(next));
-          
+
           // Mark active study session to maintain streak if active at least 10 seconds
           if (next >= 10 && next % 10 === 0) {
             handleStudyActivity();
           }
+
+          // Heartbeat every 5 minutes of active study
+          if (next > 0 && next % 300 === 0 && activeCourse) {
+            analytics.studyHeartbeat({
+              courseId: activeCourse.id,
+              courseName: activeCourse.name,
+              totalSecondsToday: next,
+            });
+          }
+
           return next;
         });
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [currentView, activeCourse]);
 
   const handleSetView = (view: 'home' | 'library' | 'analytics' | 'documentation') => {
     setView(view);
+    analytics.pageViewed(view);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -126,6 +139,11 @@ export default function App() {
     setActiveCourse(course);
     setLoadedPlaylist(parentPlaylist);
     handleSetView('library');
+    analytics.courseOpened({
+      courseId: course.id,
+      courseName: course.name,
+      playlistName: parentPlaylist?.name,
+    });
   };
 
   // Mount/select a multi-course playlist from Library indexers
@@ -135,17 +153,34 @@ export default function App() {
       setActiveCourse(playlist.courses[0]);
     }
     handleSetView('library');
+    analytics.playlistOpened({
+      playlistId: playlist.id,
+      playlistName: playlist.name,
+      courseCount: playlist.courses.length,
+    });
   };
 
   // Manage course completions and track progress.json changes
   const handleUpdateProgress = async (
-    courseId: string, 
-    filePath: string, 
-    completed: boolean, 
+    courseId: string,
+    filePath: string,
+    completed: boolean,
     isLastOpenedOnly: boolean = false
   ) => {
     let targetCourse: Course | null = null;
     let xpGain = 0;
+
+    if (!isLastOpenedOnly) {
+      const course = activeCourse?.id === courseId ? activeCourse
+        : loadedPlaylist?.courses.find(c => c.id === courseId) ?? null;
+      const fileType = course?.chapters.flatMap(ch => ch.files).find(f => f.path === filePath)?.type ?? 'unknown';
+      const courseName = course?.name ?? courseId;
+      if (completed) {
+        analytics.lessonCompleted({ filePath, fileType, courseName, courseId });
+      } else {
+        analytics.lessonUncompleted({ filePath, courseId });
+      }
+    }
 
     // 1. If currently inside a loaded Playlist representation, update its course
     if (loadedPlaylist) {
