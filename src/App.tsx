@@ -344,6 +344,7 @@ export default function App() {
                 }}
                 onUpdateProgress={handleUpdateProgress}
                 onSelectCourse={(course) => handleSelectCourse(course, loadedPlaylist)}
+                isSidebarCollapsed={isSidebarCollapsed}
               />
             ) : (
               <LibraryListView

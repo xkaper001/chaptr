@@ -13,6 +13,7 @@ interface CourseDetailViewProps {
   onBack: () => void;
   onUpdateProgress: (courseId: string, filePath: string, completed: boolean, isLastOpenedOnly?: boolean) => void;
   onSelectCourse?: (course: Course) => void;
+  isSidebarCollapsed: boolean;
 }
 
 export default function CourseDetailView({ 
@@ -20,7 +21,8 @@ export default function CourseDetailView({
   parentPlaylist,
   onBack, 
   onUpdateProgress,
-  onSelectCourse
+  onSelectCourse,
+  isSidebarCollapsed
 }: CourseDetailViewProps) {
   if (!course) {
     return (
@@ -215,7 +217,7 @@ export default function CourseDetailView({
   };
 
   return (
-    <div id={`course-viewer-${course.id}`} className="px-6 md:px-12 py-8 max-w-7xl mx-auto flex flex-col gap-6 selection:bg-brand-neon selection:text-background">
+    <div id={`course-viewer-${course.id}`} className={`px-6 md:px-12 py-8 mx-auto flex flex-col gap-6 selection:bg-brand-neon selection:text-background ${isSidebarCollapsed ? "max-w-8xl" : "max-w-7xl"}`}>
       
       {/* Upper navigation breadcrumb */}
       <div id="course-header-crumb" className="flex flex-wrap items-center justify-between gap-4 border-b border-border-stroke pb-4 select-none">
